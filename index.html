@@ -10,32 +10,34 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header>
-    <div class="header-inner">
-      <div class="title-block">
-        <h1>FIFA World Cup 2026 — Knockout Stage</h1>
-        <p>Round of 32 → Final · Times shown in Bangladesh (BDT) · Click a team to advance them</p>
-      </div>
-      <div class="champion-banner" id="championBanner">
-        <div>
-          <div class="label">Your predicted champion</div>
-          <div class="name" id="championName">Pick every round…</div>
+  <div id="pageExportArea">
+    <header>
+      <div class="header-inner">
+        <div class="title-block">
+          <h1>FIFA World Cup 2026 — Knockout Stage</h1>
+          <p>Round of 32 → Final · Times shown in Bangladesh (BDT) · Click a team to advance them</p>
+        </div>
+        <div class="champion-banner" id="championBanner">
+          <div>
+            <div class="label">Your predicted champion</div>
+            <div class="name" id="championName">Pick every round…</div>
+          </div>
+        </div>
+        <div class="toolbar">
+          <button type="button" id="resetBtn">Reset bracket</button>
+          <button type="button" id="downloadImageBtn" class="primary">Download as image</button>
         </div>
       </div>
-      <div class="toolbar">
-        <button type="button" id="resetBtn">Reset bracket</button>
-        <button type="button" id="downloadImageBtn" class="primary">Download as image</button>
-      </div>
+    </header>
+
+    <div class="hint">
+      <strong>How to use:</strong> Click a team to advance them. Double-click a Round of 32 team to rename it. Predictions save automatically.
     </div>
-  </header>
 
-  <div class="hint">
-    <strong>How to use:</strong> Click a team to advance them. Double-click a Round of 32 team to rename it. Predictions save automatically.
-  </div>
-
-  <div class="bracket-wrap" id="imageExportArea">
-    <div class="bracket" id="bracket"></div>
-    <div class="third-place-bar" id="thirdPlace"></div>
+    <div class="bracket-wrap">
+      <div class="bracket" id="bracket"></div>
+      <div class="third-place-bar" id="thirdPlace"></div>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>

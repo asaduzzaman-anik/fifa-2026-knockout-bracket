@@ -24,7 +24,7 @@ An interactive knockout-stage bracket for the [FIFA World Cup 2026](https://www.
 4. **Edit Round of 32 teams** — double-click a team name in the first round to rename it.
 5. **Third place** — after both semi-finals have a winner, pick the third-place match at the bottom of the page.
 6. **Your champion** — once you complete the Final, your predicted winner appears in the header.
-7. **Download as image** — use **Download as image** to save your full bracket as a PNG (great for sharing on social media).
+7. **Download as image** — use **Download as image** to save the full page (header, champion pick, and bracket) as a PNG.
 8. **Reset** — use **Reset bracket** to clear all predictions and start over.
 
 > **Tip:** Predictions are stored only in your browser. Clearing site data or using a different device will not carry over your picks.

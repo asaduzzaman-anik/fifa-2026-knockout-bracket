@@ -108,6 +108,47 @@ const ROUND_ORDER = [
 ];
 
 let state = loadState();
+const flagDataCache = {};
+
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function cacheFlagCode(code) {
+  if (!code || flagDataCache[code]) return flagDataCache[code];
+
+  try {
+    const response = await fetch(`https://flagcdn.com/w40/${code}.png`);
+    if (!response.ok) throw new Error('flag fetch failed');
+    flagDataCache[code] = await blobToDataUrl(await response.blob());
+  } catch (_) {
+    flagDataCache[code] = null;
+  }
+
+  return flagDataCache[code];
+}
+
+async function cacheFlagForCountry(country) {
+  const code = FLAGS[country];
+  if (!code) return null;
+  return cacheFlagCode(code);
+}
+
+async function preloadAllFlags() {
+  const codes = [...new Set(Object.values(FLAGS))];
+  await Promise.all(codes.map((code) => cacheFlagCode(code)));
+}
+
+function flagUrl(country) {
+  const code = FLAGS[country];
+  if (!code) return '';
+  return flagDataCache[code] || `https://flagcdn.com/w40/${code}.png`;
+}
 
 function loadState() {
   try {
@@ -134,11 +175,6 @@ function setWinner(matchId, team) {
     delete state.winners[String(matchId)];
     delete state.winners[matchId];
   }
-}
-
-function flagUrl(country) {
-  const code = FLAGS[country];
-  return code ? `https://flagcdn.com/w40/${code}.png` : '';
 }
 
 function escapeHtml(text) {
@@ -250,7 +286,9 @@ function editTeam(matchId, slot, value) {
 function renderTeamRow(matchId, slot, team, isWinner) {
   const empty = !team;
   const cls = ['team', empty ? 'empty' : '', isWinner ? 'winner' : ''].filter(Boolean).join(' ');
-  const flag = team ? `<img src="${flagUrl(team)}" alt="" loading="lazy" crossorigin="anonymous">` : '';
+  const flag = team
+    ? `<img src="${flagUrl(team)}" alt="" data-country="${escapeHtml(team)}">`
+    : '';
   const label = empty ? 'TBD' : escapeHtml(team);
   const editable = MATCHES[matchId].round === 'r32' ? ' data-editable="true"' : '';
 
@@ -283,9 +321,13 @@ function renderMatch(matchId, extraClass = '', options = {}) {
     : '';
 
   const slotClass = incoming ? ' has-incoming' : '';
+  const incomingConnector = incoming
+    ? '<span class="conn-line conn-incoming" aria-hidden="true"></span>'
+    : '';
 
   return `
     <div class="match-slot${slotClass}">
+      ${incomingConnector}
       <div class="match ${extraClass}">
         <div class="match-header">
           <div class="match-num">${matchLabel}</div>
@@ -294,6 +336,16 @@ function renderMatch(matchId, extraClass = '', options = {}) {
         ${renderTeamRow(matchId, 1, t1, winner === t1)}
         ${renderTeamRow(matchId, 2, t2, winner === t2)}
       </div>
+    </div>`;
+}
+
+function renderPairConnector() {
+  return `
+    <div class="connector-wrap" aria-hidden="true">
+      <span class="conn-line conn-arm-top"></span>
+      <span class="conn-line conn-arm-bottom"></span>
+      <span class="conn-line conn-spine"></span>
+      <span class="conn-line conn-bridge"></span>
     </div>`;
 }
 
@@ -311,6 +363,7 @@ function renderRound(round) {
   pairs.forEach((pair) => {
     html += '<div class="bracket-pair">';
     pair.forEach((id) => { html += renderMatch(id); });
+    if (pair.length === 2) html += renderPairConnector();
     html += '</div>';
   });
 
@@ -342,7 +395,32 @@ function render() {
     ${renderMatch(103, 'third-place')}`;
 
   applyConnectorHighlights();
+  refreshFlagImages();
   updateChampion();
+}
+
+function refreshFlagImages() {
+  document.querySelectorAll('img[data-country]').forEach((img) => {
+    const country = img.dataset.country;
+    const cached = flagUrl(country);
+    if (cached && img.src !== cached) {
+      img.src = cached;
+    }
+  });
+}
+
+async function ensureVisibleFlagsCached() {
+  const countries = new Set();
+
+  document.querySelectorAll('img[data-country]').forEach((img) => {
+    if (img.dataset.country) countries.add(img.dataset.country);
+  });
+
+  const champion = getWinner(104);
+  if (champion) countries.add(champion);
+
+  await Promise.all([...countries].map((country) => cacheFlagForCountry(country)));
+  refreshFlagImages();
 }
 
 function applyConnectorHighlights() {
@@ -351,26 +429,6 @@ function applyConnectorHighlights() {
   });
   document.querySelectorAll('.bracket-pair').forEach((pair) => {
     pair.classList.toggle('has-winner-pick', !!pair.querySelector('.team.winner'));
-  });
-}
-
-function inlineImagesForExport(clonedRoot, originalRoot) {
-  const origImgs = originalRoot.querySelectorAll('img');
-  const clonedImgs = clonedRoot.querySelectorAll('img');
-
-  clonedImgs.forEach((clonedImg, index) => {
-    const orig = origImgs[index];
-    if (!orig || !orig.complete || !orig.naturalWidth) return;
-
-    try {
-      const canvas = document.createElement('canvas');
-      canvas.width = orig.naturalWidth;
-      canvas.height = orig.naturalHeight;
-      canvas.getContext('2d').drawImage(orig, 0, 0);
-      clonedImg.src = canvas.toDataURL('image/png');
-    } catch (_) {
-      clonedImg.removeAttribute('src');
-    }
   });
 }
 
@@ -389,7 +447,7 @@ function updateChampion() {
     const img = document.createElement('img');
     img.src = flagUrl(champion);
     img.alt = champion;
-    img.crossOrigin = 'anonymous';
+    img.dataset.country = champion;
     banner.insertBefore(img, banner.firstChild);
   } else {
     nameEl.textContent = 'Pick every round…';
@@ -423,39 +481,58 @@ function handleBracketDblClick(event) {
 
 async function downloadBracketImage() {
   const btn = document.getElementById('downloadImageBtn');
-  const area = document.getElementById('imageExportArea');
-  if (!btn || !area || typeof html2canvas !== 'function') return;
+  const area = document.getElementById('pageExportArea');
+  const bracketWrap = document.querySelector('.bracket-wrap');
+  const bracket = document.getElementById('bracket');
+  if (!btn || !area || !bracketWrap || !bracket || typeof html2canvas !== 'function') return;
 
   const originalLabel = btn.textContent;
   btn.disabled = true;
   btn.textContent = 'Generating…';
 
-  const champion = getWinner(104);
-  const header = document.createElement('div');
-  header.className = 'export-image-header';
-  header.innerHTML = `
-    <div class="export-image-title">FIFA World Cup 2026 — Knockout Predictions</div>
-    <div class="export-image-champion">${champion
-    ? `Predicted champion: ${escapeHtml(champion)}`
-    : 'Complete the bracket to show your champion'}</div>`;
+  document.body.classList.add('is-exporting');
+  const prevBracketOverflow = bracketWrap.style.overflow;
 
-  const prevOverflow = area.style.overflow;
-  area.insertBefore(header, area.firstChild);
-  area.style.overflow = 'visible';
+  bracketWrap.style.overflow = 'visible';
+
+  await ensureVisibleFlagsCached();
+
+  // Let layout settle so full bracket width is measured
+  await new Promise((resolve) => { requestAnimationFrame(() => requestAnimationFrame(resolve)); });
 
   try {
+    const exportWidth = Math.max(area.scrollWidth, bracket.scrollWidth + 48);
+    const exportHeight = area.scrollHeight;
+
     const canvas = await html2canvas(area, {
       backgroundColor: '#0a1628',
       scale: 2,
       useCORS: true,
-      allowTaint: true,
+      allowTaint: false,
       logging: false,
-      width: area.scrollWidth,
-      height: area.scrollHeight,
-      windowWidth: area.scrollWidth,
-      windowHeight: area.scrollHeight,
+      width: exportWidth,
+      height: exportHeight,
+      windowWidth: exportWidth,
+      windowHeight: exportHeight,
       onclone: (_clonedDoc, clonedElement) => {
-        inlineImagesForExport(clonedElement, area);
+        clonedElement.querySelectorAll('img[data-country]').forEach((img) => {
+          const cached = flagUrl(img.dataset.country);
+          if (cached) img.src = cached;
+        });
+        clonedElement.querySelectorAll('.conn-line').forEach((line) => {
+          if (line.classList.contains('conn-incoming') && line.closest('.has-winner-pick')) {
+            line.style.backgroundColor = '#00d4aa';
+          } else if (line.closest('.has-winner-pick')) {
+            line.style.backgroundColor = '#5aab9a';
+          } else {
+            line.style.backgroundColor = '#6b8bb8';
+          }
+        });
+        const toolbar = clonedElement.querySelector('.toolbar');
+        if (toolbar) toolbar.style.display = 'none';
+        clonedElement.style.overflow = 'visible';
+        const wrap = clonedElement.querySelector('.bracket-wrap');
+        if (wrap) wrap.style.overflow = 'visible';
       },
     });
 
@@ -475,9 +552,11 @@ async function downloadBracketImage() {
       : 'Could not generate image. Please try again.');
     btn.textContent = originalLabel;
   } finally {
-    header.remove();
-    area.style.overflow = prevOverflow;
+    document.body.classList.remove('is-exporting');
+    bracketWrap.style.overflow = prevBracketOverflow;
     btn.disabled = false;
+    refreshFlagImages();
+    updateChampion();
   }
 }
 
@@ -502,6 +581,10 @@ function init() {
   downloadImageBtn.addEventListener('click', downloadBracketImage);
 
   render();
+  preloadAllFlags().then(() => {
+    refreshFlagImages();
+    updateChampion();
+  });
 }
 
 document.addEventListener('DOMContentLoaded', init);
