@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FIFA World Cup 2026 — Knockout Bracket</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <div class="title-block">
+        <h1>FIFA World Cup 2026 — Knockout Stage</h1>
+        <p>Round of 32 → Final · Times shown in Bangladesh (BDT) · Click a team to advance them</p>
+      </div>
+      <div class="champion-banner" id="championBanner">
+        <div>
+          <div class="label">Your predicted champion</div>
+          <div class="name" id="championName">Pick every round…</div>
+        </div>
+      </div>
+      <div class="toolbar">
+        <button type="button" id="resetBtn">Reset bracket</button>
+        <button type="button" class="primary" id="exportBtn">Copy prediction</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="hint">
+    <strong>How to use:</strong> Click a team to advance them. Double-click a Round of 32 team to rename it. Predictions save automatically.
+  </div>
+
+  <div class="bracket-wrap">
+    <div class="bracket" id="bracket"></div>
+    <div class="third-place-bar" id="thirdPlace"></div>
+  </div>
+
+  <script src="bracket.js"></script>
+</body>
+</html>
