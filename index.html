@@ -24,7 +24,7 @@
       </div>
       <div class="toolbar">
         <button type="button" id="resetBtn">Reset bracket</button>
-        <button type="button" class="primary" id="exportBtn">Copy prediction</button>
+        <button type="button" id="downloadImageBtn" class="primary">Download as image</button>
       </div>
     </div>
   </header>
@@ -33,11 +33,12 @@
     <strong>How to use:</strong> Click a team to advance them. Double-click a Round of 32 team to rename it. Predictions save automatically.
   </div>
 
-  <div class="bracket-wrap">
+  <div class="bracket-wrap" id="imageExportArea">
     <div class="bracket" id="bracket"></div>
     <div class="third-place-bar" id="thirdPlace"></div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="bracket.js"></script>
 </body>
 </html>

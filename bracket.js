@@ -250,7 +250,7 @@ function editTeam(matchId, slot, value) {
 function renderTeamRow(matchId, slot, team, isWinner) {
   const empty = !team;
   const cls = ['team', empty ? 'empty' : '', isWinner ? 'winner' : ''].filter(Boolean).join(' ');
-  const flag = team ? `<img src="${flagUrl(team)}" alt="">` : '';
+  const flag = team ? `<img src="${flagUrl(team)}" alt="" loading="lazy" crossorigin="anonymous">` : '';
   const label = empty ? 'TBD' : escapeHtml(team);
   const editable = MATCHES[matchId].round === 'r32' ? ' data-editable="true"' : '';
 
@@ -341,7 +341,37 @@ function render() {
     <div class="third-place-label">Third place</div>
     ${renderMatch(103, 'third-place')}`;
 
+  applyConnectorHighlights();
   updateChampion();
+}
+
+function applyConnectorHighlights() {
+  document.querySelectorAll('.match-slot').forEach((slot) => {
+    slot.classList.toggle('has-winner-pick', !!slot.querySelector('.team.winner'));
+  });
+  document.querySelectorAll('.bracket-pair').forEach((pair) => {
+    pair.classList.toggle('has-winner-pick', !!pair.querySelector('.team.winner'));
+  });
+}
+
+function inlineImagesForExport(clonedRoot, originalRoot) {
+  const origImgs = originalRoot.querySelectorAll('img');
+  const clonedImgs = clonedRoot.querySelectorAll('img');
+
+  clonedImgs.forEach((clonedImg, index) => {
+    const orig = origImgs[index];
+    if (!orig || !orig.complete || !orig.naturalWidth) return;
+
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = orig.naturalWidth;
+      canvas.height = orig.naturalHeight;
+      canvas.getContext('2d').drawImage(orig, 0, 0);
+      clonedImg.src = canvas.toDataURL('image/png');
+    } catch (_) {
+      clonedImg.removeAttribute('src');
+    }
+  });
 }
 
 function updateChampion() {
@@ -359,6 +389,7 @@ function updateChampion() {
     const img = document.createElement('img');
     img.src = flagUrl(champion);
     img.alt = champion;
+    img.crossOrigin = 'anonymous';
     banner.insertBefore(img, banner.firstChild);
   } else {
     nameEl.textContent = 'Pick every round…';
@@ -390,12 +421,72 @@ function handleBracketDblClick(event) {
   }
 }
 
+async function downloadBracketImage() {
+  const btn = document.getElementById('downloadImageBtn');
+  const area = document.getElementById('imageExportArea');
+  if (!btn || !area || typeof html2canvas !== 'function') return;
+
+  const originalLabel = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Generating…';
+
+  const champion = getWinner(104);
+  const header = document.createElement('div');
+  header.className = 'export-image-header';
+  header.innerHTML = `
+    <div class="export-image-title">FIFA World Cup 2026 — Knockout Predictions</div>
+    <div class="export-image-champion">${champion
+    ? `Predicted champion: ${escapeHtml(champion)}`
+    : 'Complete the bracket to show your champion'}</div>`;
+
+  const prevOverflow = area.style.overflow;
+  area.insertBefore(header, area.firstChild);
+  area.style.overflow = 'visible';
+
+  try {
+    const canvas = await html2canvas(area, {
+      backgroundColor: '#0a1628',
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+      logging: false,
+      width: area.scrollWidth,
+      height: area.scrollHeight,
+      windowWidth: area.scrollWidth,
+      windowHeight: area.scrollHeight,
+      onclone: (_clonedDoc, clonedElement) => {
+        inlineImagesForExport(clonedElement, area);
+      },
+    });
+
+    const link = document.createElement('a');
+    const date = new Date().toISOString().slice(0, 10);
+    link.download = `fifa-2026-bracket-${date}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+
+    btn.textContent = 'Downloaded!';
+    setTimeout(() => { btn.textContent = originalLabel; }, 1500);
+  } catch (err) {
+    console.error(err);
+    const onFileProtocol = window.location.protocol === 'file:';
+    alert(onFileProtocol
+      ? 'Could not generate image while opened as a local file. Use the live site instead:\nhttps://asaduzzaman-anik.github.io/fifa-2026-knockout-bracket/'
+      : 'Could not generate image. Please try again.');
+    btn.textContent = originalLabel;
+  } finally {
+    header.remove();
+    area.style.overflow = prevOverflow;
+    btn.disabled = false;
+  }
+}
+
 function init() {
   const bracketWrap = document.querySelector('.bracket-wrap');
   const resetBtn = document.getElementById('resetBtn');
-  const exportBtn = document.getElementById('exportBtn');
+  const downloadImageBtn = document.getElementById('downloadImageBtn');
 
-  if (!bracketWrap || !resetBtn || !exportBtn) return;
+  if (!bracketWrap || !resetBtn || !downloadImageBtn) return;
 
   bracketWrap.addEventListener('click', handleBracketClick);
   bracketWrap.addEventListener('dblclick', handleBracketDblClick);
@@ -408,26 +499,7 @@ function init() {
     }
   });
 
-  exportBtn.addEventListener('click', () => {
-    const lines = ['FIFA World Cup 2026 — My Knockout Predictions', ''];
-    const order = [73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88,
-      89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104];
-
-    order.forEach((id) => {
-      const winner = getWinner(id);
-      if (winner) lines.push(`Match ${id}: ${winner}`);
-    });
-
-    if (getWinner(104)) {
-      lines.push('', `🏆 Champion: ${getWinner(104)}`);
-    }
-
-    navigator.clipboard.writeText(lines.join('\n')).then(() => {
-      const original = exportBtn.textContent;
-      exportBtn.textContent = 'Copied!';
-      setTimeout(() => { exportBtn.textContent = original; }, 1500);
-    });
-  });
+  downloadImageBtn.addEventListener('click', downloadBracketImage);
 
   render();
 }
