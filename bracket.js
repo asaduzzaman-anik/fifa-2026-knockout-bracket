@@ -443,7 +443,7 @@ function updateChampion() {
 
   if (champion) {
     nameEl.textContent = champion;
-    nameEl.style.color = 'var(--gold)';
+    nameEl.style.color = '';
     const img = document.createElement('img');
     img.src = flagUrl(champion);
     img.alt = champion;
@@ -505,7 +505,7 @@ async function downloadBracketImage() {
     const exportHeight = area.scrollHeight;
 
     const canvas = await html2canvas(area, {
-      backgroundColor: '#0a1628',
+      backgroundColor: '#f4f7f9',
       scale: 2,
       useCORS: true,
       allowTaint: false,
@@ -521,11 +521,11 @@ async function downloadBracketImage() {
         });
         clonedElement.querySelectorAll('.conn-line').forEach((line) => {
           if (line.classList.contains('conn-incoming') && line.closest('.has-winner-pick')) {
-            line.style.backgroundColor = '#00d4aa';
+            line.style.backgroundColor = '#007bff';
           } else if (line.closest('.has-winner-pick')) {
-            line.style.backgroundColor = '#5aab9a';
+            line.style.backgroundColor = '#007bff';
           } else {
-            line.style.backgroundColor = '#6b8bb8';
+            line.style.backgroundColor = '#5ba4d5';
           }
         });
         const toolbar = clonedElement.querySelector('.toolbar');
